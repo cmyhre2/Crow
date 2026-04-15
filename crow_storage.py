@@ -34,6 +34,7 @@ def bootstrap_db():
             target_ip INET,
             severity INT,
             description TEXT,
+            report TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );"""
     ]
