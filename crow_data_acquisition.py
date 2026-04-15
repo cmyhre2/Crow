@@ -99,7 +99,7 @@ def db_writer_worker():
         print(f"DB WRITER THREAD ERROR: {e}") # Scaffolding
 
 if __name__ == "__main__":
-    # Initialize tables once before starting anything else
+# Initialize tables once before starting anything else
     from crow_storage import bootstrap_db
     bootstrap_db()
 
