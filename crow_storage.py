@@ -50,3 +50,18 @@ def bootstrap_db():
 def save_packet_batch(batch):
     # This keeps the logic contained here
     pass
+
+# Helper for the Detection module
+def log_security_alert(alert_type, src_ip, target_ip, severity, description):
+    """Logs a security alert to the database."""
+    conn = get_db_connection()
+    cur = conn.cursor()
+    query = """
+        INSERT INTO security_alerts 
+        (alert_type, source_ip, target_ip, severity, description)
+        VALUES (%s, %s, %s, %s, %s)
+    """
+    cur.execute(query, (alert_type, src_ip, target_ip, severity, description))
+    conn.commit()
+    cur.close()
+    conn.close()
