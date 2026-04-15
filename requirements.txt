@@ -1,0 +1,15 @@
+# Networking and Packet Capture
+scapy==2.5.0
+
+# Machine Learning and Data Processing
+scikit-learn
+numpy
+
+# Database and API
+fastapi
+uvicorn
+psycopg2-binary
+
+# Environment and AI
+python-dotenv
+ollama
