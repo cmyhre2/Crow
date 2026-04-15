@@ -1,0 +1,52 @@
+import os
+import psycopg2
+from dotenv import load_dotenv
+
+load_dotenv()
+
+def get_db_connection():
+    return psycopg2.connect(
+        host=os.getenv("CROW_DB_HOST"),
+        port=os.getenv("CROW_DB_PORT"),
+        database=os.getenv("CROW_DB_NAME"),
+        user=os.getenv("CROW_DB_USER"),
+        password=os.getenv("CROW_DB_PASS")
+    )
+
+def bootstrap_db():
+    """Run this to ensure all required tables exist."""
+    commands = [
+        """CREATE TABLE IF NOT EXISTS traffic_log (
+            id SERIAL PRIMARY KEY,
+            timestamp TIMESTAMPTZ,
+            src_ip INET,
+            dst_ip INET,
+            src_port INT,
+            dst_port INT,
+            protocol VARCHAR(10),
+            packet_length INT,
+            tcp_flags VARCHAR(20)
+        );""",
+        """CREATE TABLE IF NOT EXISTS security_alerts (
+            id SERIAL PRIMARY KEY,
+            alert_type VARCHAR(100),
+            source_ip INET,
+            target_ip INET,
+            severity INT,
+            description TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );"""
+    ]
+    conn = get_db_connection()
+    cur = conn.cursor()
+    for cmd in commands:
+        cur.execute(cmd)
+    conn.commit()
+    cur.close()
+    conn.close()
+    print("Database tables verified.")
+
+# Helper for the Acquisition module
+def save_packet_batch(batch):
+    # This keeps the logic contained here
+    pass

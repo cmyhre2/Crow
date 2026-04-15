@@ -1,6 +1,7 @@
 import os
 import queue
 import threading
+from crow_storage import get_db_connection, bootstrap_db
 from datetime import datetime
 import psycopg2
 import psycopg2
@@ -73,13 +74,7 @@ def db_writer_worker():
     print("DB Writer thread started...") # Scaffolding
     """Background thread that drains the queue and writes to DB in batches."""
     try:
-        conn = psycopg2.connect(
-            host=os.getenv("CROW_DB_HOST"),
-            port=os.getenv("CROW_DB_PORT"),
-            database=os.getenv("CROW_DB_NAME"),
-            user=os.getenv("CROW_DB_USER"),
-            password=os.getenv("CROW_DB_PASS")
-        )
+        conn = get_db_connection()
     
         while True:
             print("Waiting for data in queue...") # Scaffolding
@@ -104,6 +99,10 @@ def db_writer_worker():
         print(f"DB WRITER THREAD ERROR: {e}") # Scaffolding
 
 if __name__ == "__main__":
+    # Initialize tables once before starting anything else
+    from crow_storage import bootstrap_db
+    bootstrap_db()
+
     # Start the DB writer thread
     writer_thread = threading.Thread(target=db_writer_worker, daemon=True)
     writer_thread.start()
