@@ -1,6 +1,8 @@
 import os
 import psycopg2
 from dotenv import load_dotenv
+import logging
+from logging.handlers import RotatingFileHandler
 
 load_dotenv()
 
@@ -66,3 +68,25 @@ def log_security_alert(alert_type, src_ip, target_ip, severity, description):
     conn.commit()
     cur.close()
     conn.close()
+
+def setup_logging():
+    """Configures centralized, rotating logging for all modules."""
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)  # Change to DEBUG to see packet details
+
+    # Create the rotating handler
+    handler = RotatingFileHandler(
+        'crow.log', 
+        maxBytes=10 * 1024 * 1024, # 10MB per file
+        backupCount=3              # Keep 3 historical logs
+    )
+    
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    
+    logger.addHandler(handler)
+    
+    # Optional: Also print to console so you can see alerts live
+    console = logging.StreamHandler()
+    console.setFormatter(formatter)
+    logger.addHandler(console)

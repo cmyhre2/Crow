@@ -1,6 +1,10 @@
 import psycopg2
 import time
 from crow_storage import get_db_connection, log_security_alert
+import logging
+
+# Logger instance for the Detection Module
+logger = logging.getLogger(__name__)
 
 def run_port_scan_detection():
     conn = get_db_connection()
@@ -23,11 +27,11 @@ def detect_port_scans():
             alerts = cur.fetchall()
             
             if alerts:
-                print(f"[!] Port Scan Alert: Found {len(alerts)} suspicious IP(s).")
+                logger.warning(f"Port scan alert: Found {len(alerts)} suspicious IP(s).")
                 for ip, count in alerts:
-                    log_security_alert("PORT_SCAN", ip, None, 3, f"Scanned {count} ports")
+                    log_security_alert("PORT_SCAN", ip, None, 3, f"Scanned {count} port(s)")
             else:
-                print("[ ] Port Scan: No threats found.")
+                logger.debug("Port Scan: No threats found.")
     finally:
         conn.close()
 
@@ -47,11 +51,11 @@ def detect_traffic_spikes():
             cur.execute(query)
             alerts = cur.fetchall()
             if alerts:
-                print(f"[!] Traffic Spike Alert: Found {len(alerts)} burst event(s).")
+                logger.warning(f"Traffic Spike Alert: Found {len(alerts)} burst event(s).")
                 for ip, count in alerts:
                     log_security_alert("TRAFFIC_SPIKE", ip, None, 4, f"Burst: {count} pkts/10s")
             else:
-                print("[ ] Traffic Spike: No threats found.")
+                logger.debug("Traffic Spike: No threats found.")
     finally:
         conn.close()
 
@@ -71,11 +75,11 @@ def detect_high_volume():
             cur.execute(query)
             alerts = cur.fetchall()
             if alerts:
-                print(f"[!] High Volume Alert: Found {len(alerts)} high volume source(s).")
+                logger.warning(f"High Volume Alert: Found {len(alerts)} high volume source(s).")
                 for ip, count in alerts:
                     log_security_alert("HIGH_VOLUME", ip, None, 2, f"Volume: {count} pkts/5m")
             else:
-                print("[ ] High Volume: No threats found.")
+                logger.debug("High Volume: No threats found.")
     finally:
         conn.close()
 
@@ -97,25 +101,17 @@ def detect_blacklist_matches():
             cur.execute(query, (blacklist,))
             matches = cur.fetchall()
             if matches:
-                print(f"[!] Blacklist Alert: Found {len(matches)} blacklisted connection(s).")
+                logger.warning(f"Blacklist Alert: Found {len(matches)} blacklisted connection(s).")
                 for (ip,) in matches:
                     log_security_alert("BLACKLIST_MATCH", ip, None, 5, "Connection from malicious IP.")
             else:
-                print("[ ] Blacklist: No matches found.")
+                logger.debug("Blacklist: No matches found.")
     finally:
         conn.close()
 
-if __name__ == "__main__":
-    print("Crow Detection Engine starting...")
-
-    """
-    print("Testing manual alert log...")
-    log_security_alert("TEST_ALERT", "127.0.0.1", "127.0.0.1", 1, "This is a test alert.")
-    print("Test alert sent. Check your DB now.")
-    """
-    
-    # Optional: Initial setup check if needed
-    # bootstrap_db() 
+# For use by crow_main.py only (makes it cleaner to read)
+def run_detection():
+    print("Crow Detection Engine starting...") 
     
     while True:
         try:
@@ -131,12 +127,41 @@ if __name__ == "__main__":
             # Rule 4: Known Threats
             detect_blacklist_matches()
             
-            print("==============")
-            print(f"Cycle starting at {time.strftime('%H:%M:%S')}")
+            logger.debug("==============")
+            logger.debug(f"Cycle starting at {time.strftime('%H:%M:%S')}")
 
         except Exception as e:
-            print(f"CRITICAL ERROR in detection loop: {e}")
+            logger.error(f"CRITICAL ERROR in detection loop: {e}")
             
         # Sleep for 60 seconds before the next check
-        # This prevents the script from consuming 100% of your CPU
+        # This prevents the script from consuming 100% of the CPU
+        time.sleep(60) # Testing: change number back to 60
+
+
+# _Main_ method for running this file exclusively (for testing purposes)
+if __name__ == "__main__":
+    print("Crow Detection Engine starting...")
+    
+    while True:
+        try:
+            # Rule 1: Reconnaissance
+            detect_port_scans()
+            
+            # Rule 2: Immediate Threats
+            detect_traffic_spikes()
+            
+            # Rule 3: Behavioral Trends
+            detect_high_volume()
+            
+            # Rule 4: Known Threats
+            detect_blacklist_matches()
+            
+            logger.debug("==============")
+            logger.debug(f"Cycle starting at {time.strftime('%H:%M:%S')}")
+
+        except Exception as e:
+            logger.error(f"CRITICAL ERROR in detection loop: {e}")
+            
+        # Sleep for 60 seconds before the next check
+        # This prevents the script from consuming 100% of the CPU
         time.sleep(60) # Testing: change number back to 60

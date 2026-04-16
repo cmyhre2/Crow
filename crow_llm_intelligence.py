@@ -1,6 +1,10 @@
 import ollama
 from crow_storage import get_db_connection
 import time
+import logging
+
+# Logger instance for the LLM Intelligence Module
+logger = logging.getLogger(__name__)
 
 def analyze_pending_alerts():
     """Finds alerts without a report and uses LLM to generate one."""
@@ -13,7 +17,7 @@ def analyze_pending_alerts():
             
             for alert in pending_alerts:
                 alert_id, alert_type, src_ip, desc = alert
-                print(f"[*] Analyzing Alert ID {alert_id}: {alert_type} from {src_ip}")
+                logger.debug(f"Analyzing Alert ID {alert_id}: {alert_type} from {src_ip}")
                 
                 # The "Investigator" Prompt
                 prompt = (
@@ -30,11 +34,19 @@ def analyze_pending_alerts():
                 # Update the database
                 cur.execute("UPDATE security_alerts SET report = %s WHERE id = %s", (report_text, alert_id))
                 conn.commit()
-                print(f"[+] Report generated for Alert ID {alert_id}")
+                logger.debug(f"Report generated for Alert ID {alert_id}")
                 
     finally:
         conn.close()
 
+# For use by crow_main.py only (makes it cleaner to read)
+def run_llm_intelligence():
+    print("Intelligence Module Active. Watching for alerts...")
+    while True:
+        analyze_pending_alerts()
+        time.sleep(30) # Check for new reports every 30 seconds
+
+# _Main_ method for running this file exclusively (for testing purposes)
 if __name__ == "__main__":
     print("Intelligence Module Active. Watching for alerts...")
     while True:
