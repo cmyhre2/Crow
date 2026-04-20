@@ -11,7 +11,6 @@ from fastapi.middleware.cors import CORSMiddleware
 app = FastAPI()
 
 # ... API endpoints ...
-# Enable CORS so your React app (on port 5173) can talk to your API (on 8000)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], 
@@ -34,6 +33,12 @@ def get_dashboard_metrics():
     """Returns aggregated data for dashboard tiles."""
     from crow_storage import get_metrics
     return get_metrics()
+
+@app.get("/reports")
+def get_reports():
+    """Endpoint for the Intelligence Reports feed."""
+    from crow_storage import get_recent_reports
+    return get_recent_reports()
 
 if __name__ == "__main__":
     print("--- Crow System Initializing ---")
