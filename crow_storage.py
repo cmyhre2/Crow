@@ -3,6 +3,8 @@ import psycopg2
 from dotenv import load_dotenv
 import logging
 from logging.handlers import RotatingFileHandler
+from psycopg2.extras import RealDictCursor
+
 
 load_dotenv()
 
@@ -90,3 +92,42 @@ def setup_logging():
     console = logging.StreamHandler()
     console.setFormatter(formatter)
     logger.addHandler(console)
+
+def get_all_alerts():
+    """Queries the security_alerts table and returns a list of dictionaries."""
+    conn = get_db_connection()
+    # RealDictCursor makes the rows act like dictionaries
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    
+    try:
+        cursor.execute("SELECT * FROM security_alerts ORDER BY id DESC LIMIT 50")
+        alerts = cursor.fetchall()
+    finally:
+        cursor.close()
+        conn.close()
+
+    return alerts
+
+def get_metrics():
+    """Queries aggregated stats from PostgreSQL."""
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    
+    # Packets in last 10 minutes
+    cursor.execute("SELECT COUNT(*) as count FROM security_alerts WHERE created_at > NOW() - INTERVAL '10 minutes'")
+    packets = cursor.fetchone()['count']
+    
+    # ost common IP
+    cursor.execute("SELECT source_ip, COUNT(*) as frequency FROM security_alerts GROUP BY source_ip ORDER BY frequency DESC LIMIT 1")
+    top_ip = cursor.fetchone()
+    
+    # Most common protocol
+    cursor.execute("SELECT protocol, COUNT(*) as frequency FROM security_alerts GROUP BY protocol ORDER BY frequency DESC LIMIT 1")
+    top_proto = cursor.fetchone()
+    
+    conn.close()
+    return {
+        "packets_10min": packets,
+        "top_ip": top_ip['source_ip'] if top_ip else "N/A",
+        "top_protocol": top_proto['protocol'] if top_proto else "N/A"
+    }
