@@ -3,6 +3,8 @@ import psycopg2
 from dotenv import load_dotenv
 import logging
 from logging.handlers import RotatingFileHandler
+from psycopg2.extras import RealDictCursor
+
 
 load_dotenv()
 
@@ -86,7 +88,94 @@ def setup_logging():
     
     logger.addHandler(handler)
     
-    # Optional: Also print to console so you can see alerts live
+    # Optional: Also print to console so the user can see alerts live
     console = logging.StreamHandler()
     console.setFormatter(formatter)
     logger.addHandler(console)
+
+def get_all_alerts():
+    """Queries the security_alerts table and returns a list of dictionaries."""
+    conn = get_db_connection()
+    # RealDictCursor makes the rows act like dictionaries
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    
+    try:
+        cursor.execute("SELECT * FROM security_alerts ORDER BY id DESC LIMIT 50")
+        alerts = cursor.fetchall()
+    finally:
+        cursor.close()
+        conn.close()
+
+    return alerts
+
+def get_metrics():
+    """Queries aggregated stats using the correct schema names."""
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    
+    data = {}
+    try:
+        # Packets in last 10 minutes
+        cursor.execute("SELECT COUNT(*) as count FROM traffic_log WHERE timestamp > NOW() - INTERVAL '10 minutes'")
+        data["packets_10min"] = cursor.fetchone()['count']
+        
+        # Packets in last 1 hour
+        cursor.execute("SELECT COUNT(*) as count FROM traffic_log WHERE timestamp > NOW() - INTERVAL '1 hour'")
+        data["packets_1h"] = cursor.fetchone()['count']
+
+        # Port Scans in last 10 minutes
+        cursor.execute("""
+            SELECT COUNT(*) as count FROM security_alerts 
+            WHERE alert_type = 'PORT_SCAN' 
+            AND created_at > NOW() - INTERVAL '10 minutes'
+        """)
+        data["port_scans_10min"] = cursor.fetchone()['count']
+        
+        # Most common Source IP
+        cursor.execute("""
+            SELECT source_ip, COUNT(*) as frequency 
+            FROM security_alerts 
+            GROUP BY source_ip 
+            ORDER BY frequency DESC LIMIT 1
+        """)
+        row_ip = cursor.fetchone()
+        data["top_ip"] = str(row_ip['source_ip']) if row_ip else "N/A"
+        
+        # Most common Protocol
+        cursor.execute("""
+            SELECT protocol, COUNT(*) as frequency 
+            FROM traffic_log 
+            GROUP BY protocol 
+            ORDER BY frequency DESC LIMIT 1
+        """)
+        row_proto = cursor.fetchone()
+        data["top_protocol"] = row_proto['protocol'] if row_proto else "N/A"
+
+    except Exception as e:
+        print(f"Error in get_metrics: {e}")
+        return {"error": str(e)}
+    finally:
+        cursor.close()
+        conn.close()
+        
+    return data
+
+def get_recent_reports():
+    """Fetches the latest alerts that have an LLM-generated report."""
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    
+    try:
+        # Crow only wants rows where 'report' is not NULL and not an empty string
+        cursor.execute("""
+            SELECT id, alert_type, description, report, created_at 
+            FROM security_alerts 
+            WHERE report IS NOT NULL AND report != ''
+            ORDER BY id DESC LIMIT 10
+        """)
+        reports = cursor.fetchall()
+    finally:
+        cursor.close()
+        conn.close()
+
+    return reports

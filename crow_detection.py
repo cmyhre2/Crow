@@ -86,7 +86,7 @@ def detect_high_volume():
 def detect_blacklist_matches():
     """Rule 4: Detect activity from known malicious IPs."""
     # This list could eventually be loaded from a file or another DB table
-    blacklist = ['192.168.1.105', '45.76.12.34', '10.0.0.99','172.17.8.125']  # Testing: Remove 172.17.8.125 (computer's local IP for testing this rule) later.
+    blacklist = ['192.168.1.105', '45.76.12.34', '10.0.0.99']  # Testing: Remove '172.17.8.125' (computer's local IP for testing this rule) later.
     
     conn = get_db_connection()
     try:
