@@ -4,11 +4,9 @@ import threading
 from crow_storage import get_db_connection, bootstrap_db
 from datetime import datetime
 import psycopg2
-import psycopg2
 from dotenv import load_dotenv
 from scapy.all import sniff, IP, TCP, UDP
 from psycopg2.extras import execute_values
-from crow_storage import bootstrap_db
 import logging
 
 # Setup environment
